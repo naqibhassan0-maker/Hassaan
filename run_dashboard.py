@@ -4,9 +4,21 @@ Smart Money Concepts Dashboard - Direct Launcher
 Installs dependencies and starts Streamlit directly.
 """
 
+import socket
 import subprocess
 import sys
 import os
+
+def find_free_port(start=8501, end=8510):
+    for port in range(start, end + 1):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                sock.bind(('localhost', port))
+                return port
+            except OSError:
+                continue
+    raise RuntimeError('No free port available between 8501 and 8510')
 
 def main():
     os.chdir('/workspaces/Hassaan')
@@ -29,16 +41,25 @@ def main():
         print("⚠️  Installation completed with warnings\n")
     
     # Step 2: Launch Streamlit
+    port = find_free_port(8501, 8510)
     print("="*70)
     print("🎯 Starting Streamlit Dashboard...")
     print("="*70)
-    print("\n📊 Dashboard URL: http://localhost:8501")
-    print("🌐 Network URL: http://[IP]:8501")
+    print(f"\n📊 Dashboard URL: http://localhost:{port}")
+    print(f"🌐 Network URL: http://[IP]:{port}")
     print("\n✨ Press Ctrl+C to stop the dashboard\n")
     
     # Launch streamlit
     subprocess.run(
-        [sys.executable, "-m", "streamlit", "run", "streamlit_app.py", "--logger.level=error"],
+        [
+            sys.executable,
+            "-m",
+            "streamlit",
+            "run",
+            "streamlit_app.py",
+            f"--server.port={port}",
+            "--logger.level=error",
+        ],
         cwd="/workspaces/Hassaan"
     )
 

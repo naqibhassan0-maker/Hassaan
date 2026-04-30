@@ -4,6 +4,7 @@ Smart Money Concepts Dashboard - Python Startup Handler
 Ensures all dependencies are installed before launching the app.
 """
 
+import socket
 import subprocess
 import sys
 import os
@@ -27,6 +28,18 @@ def run_command(cmd, description):
         if e.stderr:
             print(f"   Error: {e.stderr}")
         return False
+
+def find_free_port(start=8501, end=8510):
+    for port in range(start, end + 1):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                sock.bind(('localhost', port))
+                return port
+            except OSError:
+                continue
+    raise RuntimeError('No free port available between 8501 and 8510')
+
 
 def main():
     print("\n" + "=" * 70)
@@ -54,12 +67,20 @@ def main():
         sys.exit(1)
     
     # Step 4: Launch Streamlit
+    port = find_free_port(8501, 8510)
     print("\n" + "=" * 70)
     print("✨ All checks passed! Starting dashboard...")
-    print("📊 Access at: http://localhost:8501")
+    print(f"📊 Access at: http://localhost:{port}")
     print("=" * 70 + "\n")
     
-    subprocess.run([sys.executable, "-m", "streamlit", "run", "streamlit_app.py"])
+    subprocess.run([
+        sys.executable,
+        "-m",
+        "streamlit",
+        "run",
+        "streamlit_app.py",
+        f"--server.port={port}",
+    ])
 
 if __name__ == "__main__":
     main()

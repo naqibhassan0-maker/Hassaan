@@ -1,9 +1,10 @@
 import sys
+import json
+from pathlib import Path
 
 # Verify all imports are available
 try:
     import streamlit as st
-    import streamlit.components.v1 as components
     import yfinance as yf
     import pandas as pd
     from datetime import datetime, timedelta
@@ -164,6 +165,54 @@ def analyze_smc(df):
         return f"ANALYSIS ERROR: {str(e)[:50]}", "Neutral", 0
 
 
+HISTORY_FILE = Path(__file__).parent / "confidence_score_history.json"
+
+
+def load_confidence_history():
+    if HISTORY_FILE.exists():
+        try:
+            with HISTORY_FILE.open("r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return []
+    return []
+
+
+def save_confidence_history(history):
+    try:
+        with HISTORY_FILE.open("w", encoding="utf-8") as f:
+            json.dump(history, f, indent=2)
+    except OSError:
+        pass
+
+
+def record_confidence_score(asset, timeframe, score, signal, strength):
+    if score < 80:
+        return
+
+    entry = {
+        "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "asset": asset,
+        "timeframe": timeframe,
+        "score": int(score),
+        "signal": signal,
+        "strength": strength,
+    }
+    history = load_confidence_history()
+
+    if any(
+        h.get("asset") == entry["asset"] and
+        h.get("timeframe") == entry["timeframe"] and
+        h.get("score") == entry["score"] and
+        h.get("signal") == entry["signal"]
+        for h in history[-10:]
+    ):
+        return
+
+    history.append(entry)
+    save_confidence_history(history)
+
+
 if page == "Live Signals":
     st.header("📡 Live SMC Signals")
     st.markdown("Real-time Smart Money Concepts signal detection for major assets.")
@@ -175,16 +224,7 @@ if page == "Live Signals":
     )
 
     if auto_refresh:
-        components.html(
-            """
-            <script>
-            setTimeout(function() {
-                window.location.reload();
-            }, 5000);
-            </script>
-            """,
-            height=1,
-        )
+        st.info("Auto-refresh is enabled. Press Refresh Data or reload the page to update the latest market signals.")
     
     # Asset selection
     col1, col2 = st.columns([2, 1])
@@ -249,6 +289,7 @@ if page == "Live Signals":
                     
                     # Run SMC analysis
                     signal, strength, score = analyze_smc(data)
+                    record_confidence_score(name, timeframe, score, signal, strength)
                     
                     # Extract price data safely with better error handling
                     try:
@@ -318,6 +359,17 @@ if page == "Live Signals":
     with col2:
         if st.button("🔄 Refresh Data"):
             st.rerun()
+
+    history = load_confidence_history()
+    if history:
+        with st.expander("Saved High-Confidence Score History (80+)", expanded=False):
+            recent = history[-10:][::-1]
+            st.write(f"**Stored entries:** {len(history)}")
+            for row in recent:
+                st.markdown(
+                    f"- `{row['timestamp']}` | {row['asset']} {row['timeframe']} | "
+                    f"Score: **{row['score']}** | {row['signal']} | {row['strength']}"
+                )
 
 elif page == "Executive Summary":
     st.header("Executive Summary")

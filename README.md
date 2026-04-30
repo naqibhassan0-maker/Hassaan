@@ -51,7 +51,7 @@ chmod +x run.sh
 ./run.sh
 ```
 
-The dashboard will open at `http://localhost:8501`
+The dashboard will open at the printed URL (usually `http://localhost:8501`).
 
 ### Troubleshooting
 If you encounter import errors, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for solutions.
