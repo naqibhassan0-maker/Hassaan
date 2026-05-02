@@ -42,7 +42,12 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # 4. Start dashboard
-streamlit run streamlit_app.py
+streamlit run streamlit_app.py --server.address=0.0.0.0 --server.enableCORS=false
+```
+
+If the page stays blank, the default port may already be in use. Try a different port:
+```bash
+streamlit run streamlit_app.py --server.port=8502 --server.address=0.0.0.0 --server.enableCORS=false
 ```
 
 ✅ Best for: Troubleshooting, understanding each step

@@ -33,7 +33,7 @@ if [ $? -eq 0 ]; then
     echo "🎯 All checks passed! Starting Streamlit dashboard..."
     echo "📊 Dashboard URL: http://localhost:8501"
     echo ""
-    python3 -m streamlit run streamlit_app.py --logger.level=info
+    python3 -m streamlit run streamlit_app.py --server.address=0.0.0.0 --server.enableCORS=false --server.headless=true --logger.level=info
 else
     echo "❌ Import verification failed. Please check the output above."
     exit 1

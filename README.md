@@ -41,8 +41,8 @@ pip install -r requirements.txt
 # Verify setup
 python3 test_imports.py
 
-# Launch dashboard
-streamlit run streamlit_app.py
+# Launch dashboard (remote-friendly)
+python3 -m streamlit run streamlit_app.py --server.address=0.0.0.0 --server.enableCORS=false
 ```
 
 ### Option 3: Using Bash Script (Linux/Mac)
@@ -52,6 +52,10 @@ chmod +x run.sh
 ```
 
 The dashboard will open at the printed URL (usually `http://localhost:8501`).
+
+> If the page stays blank, the default Streamlit port may already be in use. Try:
+> - `python3 run_dashboard.py`
+> - or `streamlit run streamlit_app.py --server.port=8502 --server.address=0.0.0.0 --server.enableCORS=false`
 
 ### Troubleshooting
 If you encounter import errors, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for solutions.

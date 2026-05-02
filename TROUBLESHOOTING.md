@@ -70,6 +70,32 @@ python3 -m pip install -r requirements.txt --no-cache-dir
 
 ---
 
+## Issue: Blank white page after starting Streamlit
+
+This can happen when the default Streamlit port (`8501`) is already in use, causing the browser to connect to the wrong service or no service at all.
+
+```bash
+# Start the app on an alternate port
+streamlit run streamlit_app.py --server.port=8502 --server.address=0.0.0.0 --server.enableCORS=false
+```
+
+Or use the built-in port finder launcher:
+
+```bash
+python3 run_dashboard.py
+```
+
+If you still see nothing, check whether port 8501 is in use:
+
+```bash
+python3 - <<'PY'
+import socket
+s = socket.socket()
+print('8501', 'open' if s.connect_ex(('127.0.0.1', 8501)) == 0 else 'closed')
+s.close()
+PY
+```
+
 ## Issue: "Streamlit not found" or similar
 
 This usually means Streamlit is not installed or not in PATH.

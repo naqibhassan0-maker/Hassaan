@@ -2,41 +2,70 @@ import sys
 import json
 from pathlib import Path
 
+# Basic test
+print("Starting Smart Money Concepts Dashboard...")
+print(f"Python executable: {sys.executable}")
+
 # Verify all imports are available
 try:
     import streamlit as st
     import yfinance as yf
     import pandas as pd
     from datetime import datetime, timedelta
+    print("All imports successful")
 except ImportError as e:
-    print(f"\n❌ IMPORT ERROR: {e}")
-    print("\n📦 Missing dependency detected. Please run:")
-    print("   python3 start.py")
-    print("\n   Or manually install:")
-    print("   pip install -r requirements.txt")
+    print(f"Import error: {e}")
     sys.exit(1)
 
+print("Setting page config...")
 st.set_page_config(
     page_title="Smart Money Concepts Dashboard",
-    page_icon="📊",
-    layout="wide",
+    layout="wide",  # Changed back to wide for compatibility
 )
 
+print("Page config set, starting UI...")
 st.title("📈 Smart Money Concepts Dashboard")
 st.caption("Executive summary, signal framework, and live institutional signals overlay.")
 
-page = st.sidebar.radio(
-    "Navigation",
-    [
-        "Live Signals",
-        "Executive Summary",
-        "Top 20 Signals",
-        "Signal Details",
-        "Data Sources",
-        "Risk & Execution",
-        "Deployment Notes",
-    ],
-)
+# Debug info
+st.info("🔍 Debug: App started successfully")
+st.write(f"Python version: {sys.version}")
+st.write(f"Streamlit version: {st.__version__}")
+
+# Status indicator
+st.success("✅ Dashboard loaded successfully! Loading market data...")
+
+print("UI elements displayed")
+
+# Compatibility helper for older Streamlit versions
+def safe_divider():
+    if hasattr(st, "divider"):
+        st.divider()
+    else:
+        st.markdown("---")
+
+# Navigation
+try:
+    page = st.sidebar.radio(
+        "Navigation",
+        [
+            "Live Signals",
+            "Executive Summary",
+            "Top 20 Signals",
+            "Signal Details",
+            "Data Sources",
+            "Risk & Execution",
+            "Deployment Notes",
+        ],
+    )
+    st.info(f"🔍 Debug: Navigation set to '{page}'")
+except Exception as e:
+    st.error(f"Navigation error: {e}")
+    st.info("🔍 Debug: Using fallback page 'Live Signals'")
+    page = "Live Signals"
+
+if not page:
+    page = "Live Signals"
 
 # ============================================================================
 # SMC Analysis Functions
@@ -216,7 +245,15 @@ def record_confidence_score(asset, timeframe, score, signal, strength):
 if page == "Live Signals":
     st.header("📡 Live SMC Signals")
     st.markdown("Real-time Smart Money Concepts signal detection for major assets.")
-
+    
+    # Debug info
+    st.info("🔍 Debug: Entering Live Signals section")
+    
+    # Show basic content first
+    st.write("Dashboard is loading... If you see this message, the app is running but may be waiting for data.")
+    
+    st.info("🔍 Debug: Basic content displayed")
+    
     auto_refresh = st.checkbox(
         "Auto-refresh every 5 seconds",
         value=True,
@@ -243,113 +280,121 @@ if page == "Live Signals":
     st.divider()
     
     # Display signals for each asset
-    cols = st.columns(len(default_assets))
+    assets_loaded = 0
     
-    for i, (name, ticker) in enumerate(default_assets.items()):
-        with cols[i]:
-            with st.spinner(f"Loading {name}..."):
-                try:
-                    # Download data
-                    period_map = {"15m": "5d", "1h": "30d", "1d": "1y"}
-                    data = yf.download(
-                        ticker, 
-                        period=period_map.get(timeframe, "5d"), 
-                        interval=timeframe,
-                        progress=False
-                    )
-                    
-                    # Validate data structure
-                    if data is None:
-                        st.warning(f"No data returned for {name}")
-                        continue
-                    
-                    # Handle MultiIndex columns from yfinance (when downloading multiple assets)
-                    if isinstance(data.columns, pd.MultiIndex):
-                        # Flatten MultiIndex columns
-                        data.columns = data.columns.get_level_values(0)
-                    
-                    # Handle potential MultiIndex from yfinance
-                    if isinstance(data.index, pd.MultiIndex):
-                        st.warning(f"Invalid data format for {name}")
-                        continue
-                    
-                    # Check if data is valid and has required columns
-                    if not hasattr(data, 'empty') or data.empty:
-                        st.warning(f"Insufficient data for {name}")
-                        continue
-                    
-                    if len(data) < 2:
-                        st.warning(f"Not enough data points for {name}")
-                        continue
-                    
-                    required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
-                    if not all(col in data.columns for col in required_cols):
-                        st.warning(f"Missing OHLCV columns for {name}")
-                        continue
-                    
-                    # Run SMC analysis
-                    signal, strength, score = analyze_smc(data)
-                    record_confidence_score(name, timeframe, score, signal, strength)
-                    
-                    # Extract price data safely with better error handling
-                    try:
-                        # Handle NaN values - find the last valid price
-                        close_series = data['Close']
-                        
-                        # Drop NaN values to get valid prices
-                        close_valid = close_series.dropna()
-                        
-                        if len(close_valid) < 2:
-                            st.warning(f"Not enough valid price data for {name}")
-                            continue
-                        
-                        # Get last two valid prices
-                        price = float(close_valid.iloc[-1])
-                        price_prev = float(close_valid.iloc[-2])
-                        
-                        # Make sure values are valid
-                        if pd.isna(price) or pd.isna(price_prev):
-                            st.warning(f"Invalid price data for {name}")
-                            continue
-                        
-                        price_change = price - price_prev
-                        price_change_pct = (price_change / price_prev) * 100 if price_prev != 0 else 0.0
-                    except (IndexError, TypeError, ValueError, AttributeError) as e:
-                        st.warning(f"Could not extract price for {name}: {str(e)[:50]}")
-                        continue
-                    
-                    st.subheader(name)
-                    
-                    # Price display
+    for name, ticker in default_assets.items():
+        st.subheader(f"📊 {name}")
+        
+        with st.spinner(f"Loading {name}..."):
+            try:
+                # Download data
+                period_map = {"15m": "5d", "1h": "30d", "1d": "1y"}
+                data = yf.download(
+                    ticker, 
+                    period=period_map.get(timeframe, "5d"), 
+                    interval=timeframe,
+                    progress=False
+                )
+                
+                # Validate data structure
+                if data is None:
+                    raise ValueError("No data returned")
+                
+                # Handle MultiIndex columns from yfinance
+                if isinstance(data.columns, pd.MultiIndex):
+                    data.columns = data.columns.get_level_values(0)
+                
+                # Handle potential MultiIndex from yfinance
+                if isinstance(data.index, pd.MultiIndex):
+                    raise ValueError("Invalid data format")
+                
+                # Check if data is valid and has required columns
+                if not hasattr(data, 'empty') or data.empty:
+                    raise ValueError("Insufficient data")
+                
+                if len(data) < 2:
+                    raise ValueError("Not enough data points")
+                
+                required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+                if not all(col in data.columns for col in required_cols):
+                    raise ValueError("Missing OHLCV columns")
+                
+                # Run SMC analysis
+                signal, strength, score = analyze_smc(data)
+                record_confidence_score(name, timeframe, score, signal, strength)
+                
+                # Extract price data safely
+                close_series = data['Close']
+                close_valid = close_series.dropna()
+                
+                if len(close_valid) < 2:
+                    raise ValueError("Not enough valid price data")
+                
+                price = float(close_valid.iloc[-1])
+                price_prev = float(close_valid.iloc[-2])
+                
+                if pd.isna(price) or pd.isna(price_prev):
+                    raise ValueError("Invalid price data")
+                
+                price_change = price - price_prev
+                price_change_pct = (price_change / price_prev) * 100 if price_prev != 0 else 0.0
+                
+                # Display successful data
+                col1, col2 = st.columns(2)
+                with col1:
                     st.metric(
                         label="Current Price",
                         value=f"${price:.2f}",
                         delta=f"{price_change_pct:+.2f}%"
                     )
-                    
-                    # Signal display
+                
+                with col2:
                     st.write(f"**Signal:** {signal}")
                     st.write(f"**Strength:** {strength}")
-                    st.write(f"**Confidence Score:** {score}/100")
-                    
-                    # Color-coded recommendation
-                    if "BUY" in signal or "UNICORN (Bullish" in signal:
-                        st.success("✅ Recommendation: LONG Entry Zone")
-                    elif "SELL" in signal or "UNICORN (Bearish" in signal:
-                        st.error("❌ Recommendation: SHORT Entry Zone")
-                    else:
-                        st.info("🔍 Status: Monitoring for Setup")
+                    st.write(f"**Confidence:** {score}/100")
                 
-                except Exception as e:
-                    error_msg = str(e)
-                    # Truncate long error messages
-                    if len(error_msg) > 100:
-                        error_msg = error_msg[:100] + "..."
-                    st.error(f"Error loading {name}: {error_msg}")
-
+                # Color-coded recommendation
+                if "BUY" in signal or "UNICORN (Bullish" in signal:
+                    st.success("✅ LONG Entry Zone")
+                elif "SELL" in signal or "UNICORN (Bearish" in signal:
+                    st.error("❌ SHORT Entry Zone")
+                else:
+                    st.info("🔍 Monitoring")
+                
+                assets_loaded += 1
+            
+            except Exception as e:
+                # Show fallback/sample data
+                st.warning(f"⚠️ Live data unavailable for {name}")
+                st.info("Showing sample analysis for demonstration")
+                
+                # Sample data
+                sample_price = 50000 if "Bitcoin" in name else 3000 if "Ethereum" in name else 2000
+                sample_signal = "NEUTRAL / MONITORING"
+                sample_strength = "Neutral"
+                sample_score = 25
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric(
+                        label="Sample Price",
+                        value=f"${sample_price:.2f}",
+                        delta="+0.00%"
+                    )
+                
+                with col2:
+                    st.write(f"**Signal:** {sample_signal}")
+                    st.write(f"**Strength:** {sample_strength}")
+                    st.write(f"**Confidence:** {sample_score}/100")
+                
+                st.info("🔄 Refresh page to try loading live data")
     
+    if assets_loaded == 0:
+        st.error("❌ All data sources failed. Check internet connection and try again.")
+        st.info("The dashboard can still display sample data for demonstration.")
+
     # Refresh info
-    st.divider()
+    safe_divider()
     col1, col2 = st.columns([3, 1])
     with col1:
         if auto_refresh:
@@ -554,3 +599,53 @@ elif page == "Risk & Execution":
         "- Keep API keys private with Streamlit secrets.\n"
         "- Use SQLite or cached files for historical snapshots if needed.\n"
     )
+
+elif page == "Deployment Notes":
+    st.header("🚀 Deployment Notes")
+    st.markdown("### Hosting on Streamlit Community Cloud")
+    st.markdown(
+        """
+1. **Sign up** at https://streamlit.io/cloud
+2. **Connect your GitHub repository**
+3. **Configure secrets** in the Streamlit Cloud dashboard for sensitive API keys
+4. **Auto-deploy** on every push to main branch
+5. **Monitor logs** and performance from the dashboard
+
+### Environment Variables
+Use `.streamlit/secrets.toml` for API keys:
+```
+[api]
+key = "your_key_here"
+```
+Access in code: `st.secrets.api.key`
+
+### Performance Optimization
+- Cache expensive data fetches with `@st.cache_data`
+- Use `st.session_state` for form state
+- Limit data fetches with timeframes
+- Monitor YFinance rate limits
+"""
+    )
+    st.markdown("### Troubleshooting Deployment")
+    st.markdown(
+        """
+- **Blank page**: Check the Logs tab in Streamlit Cloud
+- **Import errors**: Ensure all packages are in `requirements.txt`
+- **Timeouts**: Reduce data fetch scope or add caching
+- **Rate limits**: Implement retry logic or use other data sources
+"""
+    )
+
+else:
+    # Fallback: if none of the pages matched above
+    st.error(f"⚠️ Page '{page}' not found. This is unexpected.")
+    st.info("Please select a page from the sidebar:")
+    st.markdown("""
+- 📡 Live Signals
+- 📊 Executive Summary
+- 🎯 Top 20 Signals
+- 📖 Signal Details
+- 📚 Data Sources
+- ⚙️ Risk & Execution
+- 🚀 Deployment Notes
+""")
